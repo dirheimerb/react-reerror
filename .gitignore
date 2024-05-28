@@ -1,4 +1,4 @@
 .env
-.dist
+dist
 pnpm-lock.yaml
 
