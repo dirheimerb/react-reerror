@@ -937,9 +937,113 @@ var xBinName = binAPIName;
 var xCollectionId = process.env.REACT_APP_COLLECTION_ID;
 var xBinPrivate = process.env.REACT_APP_BIN_PRIVATE;
 
+// src/Logger.ts
+var Logger = class {
+  static logError(message, error, errorInfo) {
+    console.error(message, error, errorInfo);
+    this.sendToJsonBin(message, error, errorInfo);
+  }
+  static async sendToJsonBin(message, error, errorInfo) {
+    const payload = {
+      error: {
+        errorInfo: errorInfo ? JSON.stringify(errorInfo) : "",
+        errorMessage: error.message,
+        timestamp: (/* @__PURE__ */ new Date()).toISOString()
+      },
+      metadata: {
+        created: (/* @__PURE__ */ new Date()).toISOString(),
+        component: errorInfo ? errorInfo.componentStack || null : null
+      }
+    };
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Access-Key": xAdminKey,
+          "X-Master-Key": xMasterKey,
+          "X-Bin-Name": xBinName || "",
+          "X-Bin-Private": xBinPrivate || "false",
+          "X-Collection-Id": xCollectionId || ""
+        },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        throw new Error(`Error posting to Jsonbin.io: ${response.statusText}`);
+      }
+      const data = await response.json();
+      console.log("Posted to Jsonbin.io:", data);
+    } catch (err) {
+      console.error("Failed to post to Jsonbin.io:", err);
+    }
+  }
+};
+var Logger_default = Logger;
+
 // src/Boundary.tsx
 var import_jsx_runtime = __toESM(require_jsx_runtime(), 1);
+var ErrorBoundary = class extends import_react.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      hasError: false,
+      error: null
+    };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    Logger_default.logError("Caught error in component:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h1", { children: "Something went wrong." });
+    }
+    return this.props.children;
+  }
+};
+var Boundary_default = ErrorBoundary;
+
+// src/Component.tsx
+var import_react2 = __toESM(require_react(), 1);
+var import_jsx_runtime2 = __toESM(require_jsx_runtime(), 1);
+function ErrorComponent() {
+  const [hasError, setHasError] = (0, import_react2.useState)(false);
+  const [error, setError] = (0, import_react2.useState)(null);
+  if (hasError) {
+    return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h1", { children: "Something went wrong." });
+  }
+  (0, import_react2.useEffect)(() => {
+    if (error) {
+      Logger_default.logError("Caught error in component:", error);
+    }
+  }, [error]);
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Boundary_default, { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+    "button",
+    {
+      type: "button",
+      className: "error-button",
+      style: {
+        backgroundColor: "red",
+        color: "white",
+        padding: "10px",
+        borderRadius: "5px",
+        cursor: "pointer"
+      },
+      onClick: () => {
+        setHasError(true);
+        setError(new Error("An error occurred"));
+      },
+      children: "ErrorBoundary"
+    }
+  ) });
+}
+
+// src/index.tsx
+var src_default = ErrorComponent;
 export {
+  src_default as default,
   endpoint,
   xAdminKey,
   xBinName,
